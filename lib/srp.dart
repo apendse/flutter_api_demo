@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_api_demo/search_result_dao.dart';
 import 'package:http/http.dart' as http;
@@ -9,38 +10,31 @@ class SearchResultsPage extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
+
     return SearchResultsState();
   }
 }
 
 class SearchResultsState extends State<SearchResultsPage> {
+
   late Future<SearchResults> futureSearchResults;
-  SearchResults? searchResults = null;
+  SearchResults? searchResults;
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as String;
-    futureSearchResults = fetchResults(args);
-    const itemCount = 0;
-
-    //ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Extracted $args")));
-    log("args $args");
+    final query = ModalRoute.of(context)?.settings.arguments;
+    if (query is! String) {
+      return const Text("Error! Invalid query");
+    }
+    futureSearchResults = fetchResults(query);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Results'),
+        title: Text('Flickr Results for \"$query\"'),
       ),
       body: Center(
         child: FutureBuilder<SearchResults>(
           future: futureSearchResults,
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              searchResults = snapshot.data!;
-              return ListView.builder(itemCount: searchResults!.items.length, itemBuilder: getMyItemBuilder(searchResults!));
-            } else if(snapshot.hasError) {
-              return Text("There was an error ${snapshot.error}");
-            }
-            return createMySpinner(args);
-          },
+          builder: getAsyncWidgetBuilder(query)
         )
 
 
@@ -50,25 +44,39 @@ class SearchResultsState extends State<SearchResultsPage> {
     );
   }
 
-  IndexedWidgetBuilder getMyItemBuilder(SearchResults results) {
+  AsyncWidgetBuilder<SearchResults> getAsyncWidgetBuilder(String args) {
+    return (BuildContext context, AsyncSnapshot<SearchResults> snapshot) {
+      if (snapshot.hasData) {
+        searchResults = snapshot.data!;
+        return ListView.builder(itemCount: searchResults!.items.length, itemBuilder: getSearchResultRowBuilder(searchResults!));
+      } else if(snapshot.hasError) {
+        return Text("There was an error ${snapshot.error}");
+      } else {
+        return createMySpinner(args);
+      }
+    };
+
+  }
+
+  IndexedWidgetBuilder getSearchResultRowBuilder(SearchResults results) {
     return (_, index) {
       ImageData imageData = results.items[index];
       Color colorEven =  const Color.fromARGB(0xFF, 0xFF, 0xFF, 0xFF);
-      Color colorOdd =  const Color.fromARGB(0xFF, 0xAA, 0xAA, 0xBB);
+      Color colorOdd =  const Color.fromARGB(0xFF, 0x11, 0x77, 0xBB);
       Color color = index % 2 == 0 ? colorEven : colorOdd;
       return
-      Container (
-        color:color,
-        child: Column(
-          children: [
-            const SizedBox(height: 5,),
-            Image.network(imageData.imageUrl),
-            const SizedBox(height: 8,),
-            Text(imageData.title),
-            const SizedBox(height: 5,),
-          ],
-        )
-      );
+          Container (
+            color:color,
+            child: Column(
+              children: [
+                const SizedBox(height: 5,),
+                Image.network(imageData.imageUrl),
+                const SizedBox(height: 8,),
+                Text(imageData.title),
+                const SizedBox(height: 5,),
+              ],
+            )
+          );
     };
   }
 
